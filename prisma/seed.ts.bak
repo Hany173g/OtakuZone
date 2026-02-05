@@ -1,0 +1,128 @@
+import { PrismaClient } from '@prisma/client'
+const bcrypt = require('bcryptjs')
+
+const prisma = new PrismaClient()
+
+async function main() {
+  console.log('🌱 Starting seed...')
+
+  // Create categories
+  const categories = [
+    { name: 'شونين', nameEn: 'Shounen', slug: 'shounen', description: 'أنمي موجه للشباب', icon: '⚔️', color: '#ef4444' },
+    { name: 'شوجو', nameEn: 'Shoujo', slug: 'shoujo', description: 'أنمي موجه للفتيات', icon: '💕', color: '#ec4899' },
+    { name: 'إيسيكاي', nameEn: 'Isekai', slug: 'isekai', description: 'أنمي انتقال إلى عالم آخر', icon: '🌍', color: '#a855f7' },
+    { name: 'ساينس فيكشن', nameEn: 'Sci-Fi', slug: 'sci-fi', description: 'خيال علمي', icon: '🚀', color: '#3b82f6' },
+    { name: 'كوميديا', nameEn: 'Comedy', slug: 'comedy', description: 'أنمي كوميدي', icon: '😂', color: '#eab308' },
+    { name: 'رومانس', nameEn: 'Romance', slug: 'romance', description: 'أنمي رومانسي', icon: '💖', color: '#f43f5e' },
+    { name: 'أكشن', nameEn: 'Action', slug: 'action', description: 'أنمي أكشن', icon: '💥', color: '#f97316' },
+    { name: 'دراما', nameEn: 'Drama', slug: 'drama', description: 'أنمي درامي', icon: '🎭', color: '#6366f1' },
+  ]
+
+  for (const category of categories) {
+    await prisma.category.upsert({
+      where: { slug: category.slug },
+      update: {},
+      create: category,
+    })
+  }
+
+  console.log('✅ Categories created')
+
+  // Create admin user
+  const hashedPassword = await bcrypt.hash('admin123', 10)
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@otakuzone.com' },
+    update: {},
+    create: {
+      email: 'admin@otakuzone.com',
+      name: 'مدير الموقع',
+      password: hashedPassword,
+      role: 'admin',
+    },
+  })
+
+  console.log('✅ Admin user created')
+
+  // Create test user
+  const testUserPassword = await bcrypt.hash('user123', 10)
+  const testUser = await prisma.user.upsert({
+    where: { email: 'user@test.com' },
+    update: {},
+    create: {
+      email: 'user@test.com',
+      name: 'مستخدم تجريبي',
+      password: testUserPassword,
+      role: 'user',
+    },
+  })
+
+  console.log('✅ Test user created')
+
+  // Get categories for topics
+  const shounenCategory = await prisma.category.findUnique({ where: { slug: 'shounen' } })
+  const isekaiCategory = await prisma.category.findUnique({ where: { slug: 'isekai' } })
+  const romanceCategory = await prisma.category.findUnique({ where: { slug: 'romance' } })
+
+  // Create sample topics
+  if (shounenCategory && testUser) {
+    await prisma.topic.create({
+      data: {
+        title: 'ما هو أفضل أنمي شونين لهذا الموسم؟',
+        content: '<p>أريد أن أعرف آرائكم حول أفضل أنمي شونين تم إصداره مؤخراً. ما هي توصياتكم؟</p>',
+        slug: 'best-shounen-anime-this-season',
+        categoryId: shounenCategory.id,
+        authorId: testUser.id,
+        isPopular: true,
+      },
+    })
+
+    await prisma.topic.create({
+      data: {
+        title: 'مناقشة حلقات One Piece الأخيرة',
+        content: '<p>ما رأيكم في التطورات الأخيرة في One Piece؟ الحلقات الأخيرة كانت رائعة!</p>',
+        slug: 'one-piece-latest-episodes-discussion',
+        categoryId: shounenCategory.id,
+        authorId: testUser.id,
+        isPinned: true,
+      },
+    })
+  }
+
+  if (isekaiCategory && testUser) {
+    await prisma.topic.create({
+      data: {
+        title: 'ترشيحات أنمي إيسيكاي للمبتدئين',
+        content: '<p>أريد أن أبدأ بمشاهدة أنمي إيسيكاي. ما هي أفضل الترشيحات للمبتدئين؟</p>',
+        slug: 'isekai-recommendations-for-beginners',
+        categoryId: isekaiCategory.id,
+        authorId: testUser.id,
+      },
+    })
+  }
+
+  if (romanceCategory && testUser) {
+    await prisma.topic.create({
+      data: {
+        title: 'أفضل مشاهد رومانسية في الأنمي',
+        content: '<p>شاركونا أفضل المشاهد الرومانسية التي أثرت فيكم في الأنمي!</p>',
+        slug: 'best-romantic-scenes-in-anime',
+        categoryId: romanceCategory.id,
+        authorId: testUser.id,
+        isPopular: true,
+      },
+    })
+  }
+
+  console.log('✅ Sample topics created')
+  console.log('🎉 Seed completed!')
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
+
