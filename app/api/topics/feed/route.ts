@@ -6,6 +6,7 @@ import Category from '@/models/Category'
 import Comment from '@/models/Comment'
 import Like from '@/models/Like'
 import Dislike from '@/models/Dislike'
+import type { PipelineStage } from 'mongoose'
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       let total = 0
 
       if (sort === 'most_liked') {
-        const pipeline = [
+        const pipeline: PipelineStage[] = [
           { $match: query },
           {
             $lookup: {
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
               likeCount: { $size: '$likes' },
             },
           },
-          { $sort: { likeCount: -1, createdAt: -1 } },
+          { $sort: { likeCount: -1 as const, createdAt: -1 as const } },
           { $skip: skip },
           { $limit: limit },
         ]
